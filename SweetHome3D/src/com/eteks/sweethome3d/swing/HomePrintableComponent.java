@@ -193,6 +193,7 @@ public class HomePrintableComponent extends JComponent implements Printable {
     g2D.fill(new Rectangle2D.Double(0, 0, pageFormat.getWidth(), pageFormat.getHeight()));
 
     Paper oldPaper = pageFormat.getPaper();
+    Level oldSelectedLevel = home.getSelectedLevel();
     try {
       // Let the user be able to force a fixed margin in case of bugs in page setup dialogs or printer drivers
       String fixedPrintMargin = System.getProperty("com.eteks.sweethome3d.swing.fixedPrintMargin", null);
@@ -358,32 +359,34 @@ public class HomePrintableComponent extends JComponent implements Printable {
             public boolean include(Home home, HomePieceOfFurniture piece) {
               // Print only furniture at selected level when the plan or the 3D view is printed
               return (furnitureFilter == null || furnitureFilter.include(home, piece))
-                  && piece.isAtLevel(selectedLevel)
                   && (piece.getLevel() == null || piece.getLevel().isViewable());
             }
           });
       } else {
         furnitureFilter = null;
       }
-      // Try to print next furniture view page      
-      pageExists = ((Printable)furnitureView).print(g2D, pageFormat, page);
-      if (furnitureTable != null) {
-        // Restore previous filter
-        ((FurnitureTable)furnitureView).setFurnitureFilter(furnitureFilter);
-      }
-      if (pageExists == PAGE_EXISTS
-          && !this.printablePages.contains(page)) {
-        this.printablePages.add(page);
-        this.furniturePageCount++;
+      // Try to print next furniture view page
+      try{
+        pageExists = ((Printable)furnitureView).print(g2D, pageFormat, page);
+      } finally{
+        if (furnitureTable != null) {
+          // Restore previous filter
+          ((FurnitureTable)furnitureView).setFurnitureFilter(furnitureFilter);
+        }
+        if (pageExists == PAGE_EXISTS
+                && !this.printablePages.contains(page)) {
+          this.printablePages.add(page);
+          this.furniturePageCount++;
+        }
       }
     }
-    if (pageExists == NO_SUCH_PAGE 
-        && planView != null 
-        && (homePrint == null || homePrint.isPlanPrinted())) {
-      // Try to print next plan view page
+    if (pageExists == NO_SUCH_PAGE
+            && planView != null
+            && (homePrint == null || homePrint.isPlanPrinted())) {
+      // PlanComponent prints one plan page for each viewable level.
       pageExists = ((Printable)planView).print(g2D, pageFormat, page - this.furniturePageCount);
       if (pageExists == PAGE_EXISTS
-          && !this.printablePages.contains(page)) {
+              && !this.printablePages.contains(page)) {
         this.printablePages.add(page);
         this.planPageCount++;
       }
